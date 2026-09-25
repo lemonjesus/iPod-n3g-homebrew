@@ -291,3 +291,10 @@ To remove a game, delete its folder from `iPod_Control/Games_RO/`.
 
 ## Disclosure of AI Use
 Some parts of this project were researched and developed with the aid of an LLM. Files written completely by an LLM are marked as such. Every line of code was reviewed and tested by me regardless of who or what wrote it.
+## License
+
+The SDK (everything outside `examples/doom/`) is under the [MIT License](LICENSE). Games built with the SDK don't need to include the license text, but a credit is appreciated.
+
+`examples/doom/` is licensed GPLv2 or later, because it is derived from [doomgeneric](https://github.com/ozkl/doomgeneric) and Chocolate Doom.
+
+This project is not affiliated with or endorsed by Apple.
