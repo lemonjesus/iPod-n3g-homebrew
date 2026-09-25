@@ -42,7 +42,10 @@ typedef struct eapp_os_to_game {
     uint8_t  _r0[0x2C - 0x01];
     void* async_done;           // AsyncFileIO requests completed since last frame
     eapp_input_event* input;       // button events since last frame (freed by the OS)
-    uint8_t  _r1[0x100 - 0x34];    // the EGL back buffer pointer - use GL to draw instead
+    uint8_t  _r1[0x38 - 0x34];
+    uint16_t* backbuffer;          // this frame's EGL back buffer: 320x240 RGB565, shown by
+                                   // eglSwapBuffers (writing it directly: probe-tested only)
+    uint8_t  _r2[0x100 - 0x3C];
 } eapp_os_to_game;
 
 enum { EAPP_CMD_RUN = 0, EAPP_CMD_STOP_OTHER = 4, EAPP_CMD_QUIT = 5 };
@@ -82,5 +85,43 @@ void eapp_free(void* p, uint32_t unknown);
 int misc_GetPlatformID(void);
 int misc_GetVolume(void);
 int misc_SetVolume(int percent_0_100);
+
+// Free-running 1 MHz counter (microseconds, wraps every ~71 minutes). Untested.
+void misc_GetUsecTimer(uint32_t* out);
+
+// Calls block until the IO is done. At most 10 files open at once.
+// Paths are relative to the location's folder; a leading '/' is ignored.
+enum {
+    EAPP_LOC_GAME   = 0,   // iPod_Control/games_RO/<GUID>/ - the game's own folder, read only
+    EAPP_LOC_DATA   = 1,   // iPod_Control/gamedata_RW/<GUID>/ - per game, writable
+    EAPP_LOC_STATS  = 2,   // iPod_Control/gamestats_WO/<GUID>/ - write only
+    EAPP_LOC_SHARED = 3,   // iPod_Control/gamedata_ShareRW/ - shared between games
+};
+enum { EAPP_FILE_WRITE = 0, EAPP_FILE_READ = 1 };   // open modes
+
+typedef struct eapp_file eapp_file;
+
+// Results: 0 = ok, 5 = at end of file (read), 0x19 = no free handle, else an OS error.
+int  eapp_file_open(uint8_t loc, const char* path, int mode, eapp_file** out);
+void eapp_file_close(eapp_file* f);
+int  eapp_file_read(eapp_file* f, void* buf, uint32_t len, uint32_t* done);
+int  eapp_file_write(eapp_file* f, const void* buf, uint32_t len, uint32_t* done);
+void eapp_log(const char* fmt, ...);   // printf-style; where the output goes is unknown
+
+// Seeking: the OS module has no seek entry, so call the OS's own routine directly.
+// Only valid for the firmware build this SDK targets; the opcode check guards against others.
+#define EAPP_OS_FILE_SEEK 0x08271d88u
+
+static inline uint32_t eapp_file_size(eapp_file* f) { return ((volatile uint32_t*)f)[0x20 / 4]; }
+static inline uint32_t eapp_file_tell(eapp_file* f) { return ((volatile uint32_t*)f)[0x34 / 4]; }
+
+// whence: 0 = from start, 1 = from current position, 2 = from end. Returns 0 on success,
+// 5 if the result would be past the end, -1 if the firmware isn't the expected build.
+static inline int eapp_file_seek(eapp_file* f, int32_t off, int whence) {
+    // Sanity check the entry point (stmdb sp!,{r3-r9,lr}) before calling it.
+    if (*(volatile uint32_t*)EAPP_OS_FILE_SEEK != 0xE92D43F8u)
+        return -1;
+    return ((int (*)(eapp_file*, int64_t, int))EAPP_OS_FILE_SEEK)(f, off, whence);
+}
 
 #endif

@@ -53,7 +53,8 @@ Make sure the patched build is what is actually flashed and running. An unpatche
 | Drawing with OpenGL ES 1.x (software renderer) | Confirmed; two quirks, see [Drawing](#drawing) |
 | Heap allocation (`MemoryAlloc` module) | Declared, untested |
 | Volume, platform id (`miscTBD` module) | Declared, untested |
-| Sound, file IO, save data, settings, launch artwork | Not mapped yet |
+| File IO (`DebugUtil`, synchronous), microsecond timer | Confirmed, not stress-tested |
+| Sound, async file IO, settings, launch artwork | Not mapped yet |
 
 ## Writing a game
 
@@ -192,18 +193,18 @@ The OS exports functions in named modules. `IMPORTS` in your Makefile lists the 
 | `OpenGLES` | 170 | All named and prototyped in `eapp_gles.h`; drawing confirmed |
 | `InputEvents` | 2 | `eapp_read_wheel` (confirmed), `eapp_pass_event_to_os` (untested) |
 | `MemoryAlloc` | 3 | `eapp_malloc` (slot 0), `eapp_free` (slot 2) |
-| `miscTBD` | 13 | `misc_SetVolume`, `misc_GetVolume`, `misc_GetPlatformID` |
+| `miscTBD` | 13 | `misc_SetVolume`, `misc_GetVolume`, `misc_GetPlatformID`, `misc_GetUsecTimer` |
 | `Settings` | 1 | `eapp_get_setting`, no prototype yet |
-| `AsyncFileIO` | 17 | Unmapped |
+| `AsyncFileIO` | 17 | Partly understood (request-based, results in `os->async_done`), no prototypes yet |
 | `SoundEffect` | 42 | Unmapped |
 | `Audio` | 54 | Unmapped |
 | `Metadata` | 169 | Unmapped (music library access) |
 | `Users` | 10 | Unmapped |
-| `DebugUtil` | 5 | Unmapped |
+| `DebugUtil` | 5 | Synchronous files: `eapp_file_open/close/read/write`, `eapp_log` |
 
 An unmapped function can still be imported and called by its placeholder name, but without a known signature that isn't game code you can write against yet. The module table (names, UUIDs, function order) is `tools/modules.py`; the OS matches modules by name, UUID and exact function count, so don't edit it by hand.
 
-`Game.bin` is the only file the SDK installs. Put images, fonts, levels and similar data in C arrays compiled into the program (`static const uint16_t sprite[] = {...}`). File access from a game (`AsyncFileIO`) is not mapped yet.
+By default `Game.bin` is the only file the SDK installs. Put small data in C arrays compiled into the program (`static const uint16_t sprite[] = {...}`). Larger data can be listed in `INSTALL_FILES`, copied next to `Game.bin`, and read with `eapp_file_open(EAPP_LOC_GAME, "name", EAPP_FILE_READ, &f)` (untested; see `eapp.h`, and `examples/doom` for a user).
 
 ### Performance
 
@@ -223,6 +224,7 @@ The CPU has no FPU, and GL runs in software, so some things to keep in mind:
 | `command` | 0x00 | `EAPP_CMD_RUN` (0), `EAPP_CMD_STOP_OTHER` (4), `EAPP_CMD_QUIT` (5) |
 | `async_done` | 0x2C | Finished async file requests (AsyncFileIO, unmapped) |
 | `input` | 0x30 | Button events since the last frame |
+| `backbuffer` | 0x38 | This frame's back buffer, 320x240 RGB565, shown by `eglSwapBuffers`. Writing it directly bypasses GL (used by `examples/doom`) |
 
 `eapp_game_to_os` (game to OS, 248 bytes):
 
@@ -264,6 +266,8 @@ Other settings you can put before the `include`:
 | `HEAP_KB` | `1024` | Heap requested from the OS, in KB (max 5120) |
 | `EXE` | `Game.bin` | Executable file name inside the game folder |
 | `EXTRA_CFLAGS` | empty | Extra compiler flags, e.g. `-DDEBUG` |
+| `INSTALL_FILES` | empty | Extra files `make install` copies into the game folder |
+| `LDLIBS` | empty | Extra libraries to link, e.g. newlib's `libc_nano.a` (see `examples/doom`) |
 | `B` | `build/$(FOLDER)` | Build directory |
 
 Build:

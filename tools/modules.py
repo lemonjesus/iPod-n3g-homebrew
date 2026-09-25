@@ -10,8 +10,8 @@ def _fill(name, n, known):
     return [known.get(i, "%s_%d" % (name, i)) for i in range(n)]
 
 MODULES = {
-    'miscTBD': dict(uuid='19e25e15bcdcd093cf8942d70b281c22', funcs=_fill('miscTBD', 13, {1: 'misc_SetVolume', 2: 'misc_GetVolume', 5: 'misc_GetDateTime', 8: 'misc_GetSandboxPath', 10: 'misc_GetPlatformID'})),
-    'DebugUtil': dict(uuid='2538c5ee394ac21f10a4055c4ffbed5c', funcs=_fill('DebugUtil', 5, {})),
+    'miscTBD': dict(uuid='19e25e15bcdcd093cf8942d70b281c22', funcs=_fill('miscTBD', 13, {1: 'misc_SetVolume', 2: 'misc_GetVolume', 5: 'misc_GetDateTime', 8: 'misc_GetSandboxPath', 10: 'misc_GetPlatformID', 12: 'misc_GetUsecTimer'})),
+    'DebugUtil': dict(uuid='2538c5ee394ac21f10a4055c4ffbed5c', funcs=_fill('DebugUtil', 5, {0: 'eapp_file_open', 1: 'eapp_file_close', 2: 'eapp_file_read', 3: 'eapp_file_write', 4: 'eapp_log'})),
     'MemoryAlloc': dict(uuid='db0bd0e3bf455411bb92f89b96a9e69b', funcs=_fill('MemoryAlloc', 3, {0: 'eapp_malloc', 2: 'eapp_free'})),
     'InputEvents': dict(uuid='c73357d0487174bd02f378e54437e1e6', funcs=_fill('InputEvents', 2, {0: 'eapp_read_wheel', 1: 'eapp_pass_event_to_os'})),
     'Settings': dict(uuid='8ff51a998545a21c301ebf70f4590e95', funcs=_fill('Settings', 1, {0: 'eapp_get_setting'})),

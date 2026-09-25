@@ -9,7 +9,9 @@
 #   include $(EAPP_SDK)/eapp.mk
 #
 # Optional: IMPORTS (OS modules, default "OpenGLES InputEvents"; see tools/modules.py),
-# GUID (default FOLDER), VERSION, HEAP_KB, EXE, EXTRA_CFLAGS, B (build dir).
+# GUID (default FOLDER), VERSION, HEAP_KB, EXE, EXTRA_CFLAGS, LDLIBS (extra libraries or
+# objects to link, e.g. newlib's libc_nano.a), INSTALL_FILES (extra files that `make install`
+# copies into the game folder, readable with eapp_file_open(EAPP_LOC_GAME, ...)), B (build dir).
 #
 # Targets:
 #   make                               build
@@ -102,7 +104,7 @@ $(B)/sdk/imports.o: $(B)/sdk/imports.S
 	$(CC) $(ASFLAGS) -c $< -o $@
 
 $(B)/game.elf: $(OBJS) $(EAPP_SDK)/sdk/eapp.ld
-	$(LD) $(LDFLAGS) -Map $(B)/game.map $(OBJS) $(LIBGCC) -o $@
+	$(LD) $(LDFLAGS) -Map $(B)/game.map $(OBJS) --start-group $(LDLIBS) $(LIBGCC) --end-group -o $@
 
 $(PKG)/$(EXE): $(B)/game.elf
 	@mkdir -p $(PKG)
@@ -112,13 +114,13 @@ $(PKG)/Manifest.plist: $(PKG)/$(EXE) $(TOOLS)/mkmanifest.py $(MAKEFILE_LIST)
 	$(PYTHON) $(TOOLS)/mkmanifest.py --out $@ --exe $< --name "$(NAME)" --guid "$(GUID)" \
 	    --version "$(VERSION)" --heap-kb $(HEAP_KB)
 
-install: all
+install: all $(INSTALL_FILES)
 	@test -n "$(IPOD)" || (echo "usage: make install IPOD=/Volumes/<iPod>"; exit 1)
 	@test -d "$(IPOD)/iPod_Control" || (echo "$(IPOD) is not an iPod in disk mode"; exit 1)
 	@d="$(IPOD)/iPod_Control/games_RO"; \
 	 for c in "$(IPOD)"/iPod_Control/[Gg]ames_RO; do [ -d "$$c" ] && d="$$c"; done; \
 	 mkdir -p "$$d/$(FOLDER)" && \
-	 cp $(PKG)/Manifest.plist $(PKG)/$(EXE) "$$d/$(FOLDER)/" && sync && \
+	 cp $(PKG)/Manifest.plist $(PKG)/$(EXE) $(INSTALL_FILES) "$$d/$(FOLDER)/" && sync && \
 	 echo "installed to $$d/$(FOLDER)"
 
 clean:
